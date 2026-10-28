@@ -57,11 +57,18 @@ fn contrast(message: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::i18n::{Lang, set_current};
+    use crate::i18n::{Lang, fixture_lang, set_current};
     use serde_json::json;
     use std::sync::Arc;
     use wordcraft_doc::props::{CharProps, Rgb, TextColor};
     use wordcraft_doc::{Block, Document, Paragraph, para_block};
+
+    fn japanese() -> Lang {
+        fixture_lang(
+            "ja",
+            "\tHeading level skipped (Heading {level} after Heading {previous})\t見出しレベルが飛んでいます (見出し {previous} の後に見出し {level})\n\t{n} empty paragraphs in a row\t{n} 個の空の段落が連続しています\n\tRow {row} of a table is empty: it looks like spacing\t表の {row} 行目が空です。間隔を空けるための行に見えます\n\tColumn {column} of a table is empty: it looks like spacing\t表の {column} 列目が空です。間隔を空けるための列に見えます\n\tText is hard to read: contrast {ratio}:1, {needed}:1 needed\t文字のコントラストが低いため読みづらくなっています ({ratio}:1、必要な比率 {needed}:1)\n\tRepeated word: \"{word}\"\t単語が重複しています: \"{word}\"\n",
+        )
+    }
 
     fn checker_document() -> Document {
         let mut doc = Document::new();
@@ -92,7 +99,7 @@ mod tests {
             let message = issue["issue"].as_str().unwrap();
             assert_eq!(accessibility_issue(issue["rule"].as_str().unwrap(), message), message);
         }
-        set_current(Lang::from_code("ja").unwrap());
+        set_current(japanese());
         let shown = |rule: &str| {
             let issue = report.iter().find(|i| i["rule"] == rule).unwrap();
             accessibility_issue(rule, issue["issue"].as_str().unwrap())
@@ -113,7 +120,7 @@ mod tests {
         let before = serde_json::to_value(&session.doc).unwrap();
         let result = session.run("review.issues", &json!({})).unwrap();
         let message = result.as_array().unwrap().iter().filter_map(|i| i["message"].as_str()).find(|m| m.starts_with("Repeated word:")).unwrap();
-        set_current(Lang::from_code("ja").unwrap());
+        set_current(japanese());
         assert_eq!(proof_message(message), "単語が重複しています: \"café\"");
         let word = "あア亜 {word} \"café\"";
         let supplied = format!("Repeated word: \"{word}\"");
@@ -127,7 +134,7 @@ mod tests {
 
     #[test]
     fn changed_or_malformed_checker_messages_keep_their_original_text() {
-        set_current(Lang::from_code("ja").unwrap());
+        set_current(japanese());
         for (rule, message) in [
             ("headingOrder", "Heading level skipped (Heading {level} after Heading 1)"),
             ("blankRow", "Row あ of a table is empty: it looks like spacing"),
